@@ -1,0 +1,70 @@
+Procure to Pay Tables and Data Flow
+--Vendors
+SELECT * FROM ap_vendors_v WHERE vendor_name = 'XX_VENDOR';
+select * from po_vendors where vendor_name = 'XX_VENDOR';
+
+--Requisitions
+select segment1, type_lookup_code,a.* from po_requisition_headers_all a where requisition_header_id = 431593;
+select * from po_requisition_lines_all where requisition_header_id = 431593 and requisition_line_id = 632840;
+select * from po_req_distributions_all where requisition_line_id = 632840; 
+select * from po_document_types where document_subtype = 'PURCHASE';--(po_requisition_headers_all .type_lookup_code)
+select * from po_lookup_codes where lookup_type = 'AUTHORIZATION STATUS';
+
+--PO Headers
+select * from po_distributions_all where req_distribution_id = po_req_distributions_all.distribution_id
+select * from po_lines_all where po_line_id = 1152395;
+select * From po_headers_all where po_header_id = 686518;
+select * from po_line_locations_all where po_header_id = 686518;
+
+--Receiving
+select * from rcv_transactions where po_header_id = 147163 and po_distribution_id = 353861;
+select * from rcv_shipment_headers where shipment_header_id = rcv_transaction.shipment_header_id;
+select * from rcv_shipment_lines where where shipment_header_id = rcv_transaction.shipment_header_id;
+select * from rcv_serial_transactions where transaction_id = rcv.transactions.transaction_id;
+--Receiving transaction Processor import 
+
+--AP Invoices and Payments
+select * from ap_invoice_distributions_all where po_distribution_id = 353861;
+select * from ap_invoices_all where invoice_id = 730583;
+select * from ap_terms where term_id = 10020;
+select * from ap_invoice_payments_all where invoice_id = 730583;
+select * from ap_payment_schedules_all where invoice_id = 730583;
+select * from ap_payment_distributions_all where invoice_payment_id in (select invoice_payment_id from ap_invoice_payments_all where invoice_id = 730583);
+select * from ap_checks_all where check_id = 285590;
+
+--Accounting Entries
+select * from ap_ae_lines_all where source_table = 'AP_INVOICES' and source_id = 730583; -- (ap_invoices_all.invoice_id)-------------REPLACE BY XLA_AE_LINES
+select * from ap_ae_headers_all where ae_header_id = 988223;---REPLACE BY XLA_AE_HEADERS
+
+Use event_id in XLA_AE_HEADERS and accounting_event_id in AP_INVOICE_DISTRIBUTIONS_ALL
+- Use ae_header_id to join XLA_AE_HEADERS and XLA_AE_LINES.
+--Reconciling Bank Accounts in Cash Management Module
+select * from ce_statement_headers_all where statement_header_id =75826
+select * from ce_statement_lines where statement_header_id in (select statement_header_id from ce_statement_headers_all where statement_header_id =75826)
+
+--Concurrent Program "Payables Transfer to General Ledger"
+select * from gl_interface;
+
+--Import Journal
+select * from gl_je_batches;
+select * from gl_je_headers;
+select * from gl_je_lines;
+
+
+GL_JE_BATCHES (je_batch_id)  => GL_JE_HEADERS (je_batch_id)
+GL_JE_HEADERS (je_header_id) => GL_JE_LINES (je_header_id)
+GL_JE_LINES (je_header_id,  je_line_num) => GL_IMPORT_REFERENCES (je_header_id, je_line_num)
+GL_IMPORT_REFERENCES (gl_sl_link_table, gl_sl_link_id) => XLA_AE_LINES (gl_sl_link_table, gl_sl_link_id)
+XLA_AE_LINES (application_id, ae_header_id)                   => XLA_AE_HEADERS (application_id, ae_header_id) 
+XLA_AE_HEADERS (application_id, event_id) => XLA_EVENTS (application_id, event_id)   
+XLA_EVENTS (application_id, entity_id)  => XLA.XLA_TRANSACTION_ENTITIES (application_id, entity_id)
+
+--Post Journals "Posting"
+select * from gl_balances;
+
+--Requisition Screen Header
+select * from PO_REQUISITION_HEADERS_INQ_V where requisition_num = '19106668';
+select * from PO_REQUISITION_LINES_INQ_V where requisition_header_id = 431593;
+select * from PO_REQUISITION_HEADERS_V where requisition_number = '19106668';
+select * from PO_REQUISITION_LINES_V where requisition_header_id = 431593;
+select * from PO_REQ_DISTRIBUTIONS_V where requisition_line_id in (select requisition_line_id from PO_REQUISITION_LINES_V where requisition_header_id = 431593);
